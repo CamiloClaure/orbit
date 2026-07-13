@@ -1,0 +1,11 @@
+{
+  "name": "orbit",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/api", "apps/web", "packages/shared"],
+  "scripts": {
+    "dev": "npm run dev -w apps/api & npm run dev -w apps/web & wait",
+    "boot": "bash scripts/boot.sh",
+    "boot:tunnel": "bash scripts/boot-tunnel.sh"
+  }
+}

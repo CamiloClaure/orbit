@@ -1,0 +1,188 @@
+import { useState } from 'react'
+import { motion } from 'motion/react'
+import { FileText, Plus, Clock, Sparkles, Folder, Database, CalendarDays, Target, type LucideIcon } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Card, CardHeader } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { useToast } from '@/components/ui/toast'
+import { container, fadeUp } from '@/lib/motion'
+import { cn } from '@/lib/cn'
+
+const camposDisponibles = [
+  { id: 'nombre', label: 'Nombre completo' },
+  { id: 'id', label: 'ID de empleado' },
+  { id: 'puesto', label: 'Puesto' },
+  { id: 'departamento', label: 'Departamento' },
+  { id: 'sede', label: 'Sede / País' },
+  { id: 'ingreso', label: 'Fecha de ingreso' },
+  { id: 'estado', label: 'Estado' },
+  { id: 'permisos', label: 'Saldo de permisos' },
+  { id: 'salario', label: 'Salario' },
+]
+
+// Only CSV is real — the backend only generates CSV (PLAN.md scopes Excel/PDF
+// out explicitly: "CSV covers demo, add when asked"). Only one format means
+// there's nothing to pick, so the format selector is gone; every export
+// button below downloads the one real report the API can produce.
+const formatos = [{ id: 'csv', label: 'CSV', icon: FileText }]
+
+const guardados = [
+  { nombre: 'Activos + Inactivos', cat: 'Gestor de Información', fecha: '11-05-2026', registros: 312 },
+  { nombre: 'Altas y bajas', cat: 'Gestor de Información', fecha: '11-05-2026', registros: 28 },
+  { nombre: 'Ausentismo', cat: 'Gestión de permisos', fecha: '24-04-2026', registros: 96 },
+  { nombre: 'Aniversarios 2026', cat: 'Gestor de Información', fecha: '10-04-2026', registros: 41 },
+  { nombre: 'Asesores comerciales', cat: 'Gestor de Información', fecha: '13-05-2026', registros: 73 },
+  { nombre: 'Vacaciones por país', cat: 'Gestión de permisos', fecha: '20-02-2026', registros: 154 },
+  { nombre: 'Desempeño por área', cat: 'Desempeño', fecha: '02-05-2026', registros: 312 },
+  { nombre: 'Rotación trimestral', cat: 'Gestor de Información', fecha: '01-04-2026', registros: 18 },
+]
+
+const catMeta: Record<string, { color: string; label: string; icon: LucideIcon }> = {
+  'Gestor de Información': { color: 'var(--color-accent)', label: 'Información', icon: Database },
+  'Gestión de permisos': { color: 'var(--color-info)', label: 'Permisos', icon: CalendarDays },
+  Desempeño: { color: 'var(--color-success)', label: 'Desempeño', icon: Target },
+}
+
+// Real download: same-origin GET, cookies attach automatically, the browser
+// handles the Content-Disposition — no fetch+blob dance needed.
+function downloadEmployeesCsv() {
+  const a = document.createElement('a')
+  a.href = '/api/reports/employees.csv'
+  a.click()
+}
+
+export function Reportes() {
+  const toast = useToast()
+  const [campos, setCampos] = useState<string[]>(['nombre', 'id', 'puesto', 'sede', 'estado'])
+
+  const toggle = (id: string) => {
+    setCampos((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]))
+  }
+
+  const generar = () => {
+    if (campos.length === 0) {
+      toast.warning('Selecciona al menos un campo', 'El reporte no puede estar vacío.')
+      return
+    }
+    toast.info('Descargando reporte', 'El export de empleados incluye todas las columnas disponibles (el selector de campos aún no filtra el CSV).')
+    downloadEmployeesCsv()
+  }
+
+  const exportarGuardado = (nombre: string) => {
+    toast.info(`Exportando ${nombre}`, 'Los reportes guardados son una vista previa — por ahora, todo export descarga el listado de empleados.')
+    downloadEmployeesCsv()
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Reportes y analítica"
+        title="Reportes"
+        description="Arma reportes personalizados y expórtalos en segundos — CSV, Excel o PDF."
+        action={
+          <Button variant="primary" onClick={() => toast.info('Nuevo reporte', 'Arma tu reporte en el constructor de abajo.')}>
+            <Plus size={16} /> Nuevo reporte
+          </Button>
+        }
+      />
+
+      {/* Builder */}
+      <Card>
+        <CardHeader title="Constructor de reporte" subtitle="Selecciona campos, filtros y formato" action={<Sparkles size={16} className="text-accent" />} />
+        <div className="grid grid-cols-1 gap-6 p-5 pt-4 lg:grid-cols-3">
+          {/* Campos */}
+          <div className="lg:col-span-2">
+            <p className="mb-2.5 font-mono text-[10.5px] font-medium tracking-[0.16em] text-faint uppercase">Campos a incluir</p>
+            <div className="flex flex-wrap gap-2">
+              {camposDisponibles.map((c) => {
+                const active = campos.includes(c.id)
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => toggle(c.id)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors',
+                      active
+                        ? 'border-accent/40 bg-accent-soft text-accent'
+                        : 'border-line text-muted hover:border-white/20 hover:text-fg',
+                    )}
+                  >
+                    {c.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Formato + acción */}
+          <div>
+            <p className="mb-2.5 font-mono text-[10.5px] font-medium tracking-[0.16em] text-faint uppercase">Formato</p>
+            <div className="flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-soft px-3 py-3 text-[12px] font-medium text-accent">
+              <FileText size={18} />
+              CSV
+            </div>
+            <Button variant="primary" className="mt-4 w-full" onClick={generar}>
+              Generar reporte
+            </Button>
+            <p className="mt-2 text-center text-[12px] text-faint">{campos.length} campos seleccionados</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Guardados */}
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <Folder size={16} className="text-faint" />
+          <h2 className="text-[15px] font-semibold text-fg">Reportes guardados</h2>
+          <span className="font-mono text-[12px] text-faint">{guardados.length}</span>
+        </div>
+        <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {guardados.map((r) => {
+            const meta = catMeta[r.cat] ?? { color: 'var(--color-accent)', label: r.cat.split(' ')[0], icon: FileText }
+            const Icon = meta.icon
+            return (
+              <motion.div key={r.nombre} variants={fadeUp}>
+                <Card hover className="group relative flex h-full flex-col overflow-hidden p-4">
+                  <span className="absolute inset-x-0 top-0 h-[2px]" style={{ background: meta.color }} />
+                  <div className="flex items-start justify-between">
+                    <span
+                      className="flex size-10 items-center justify-center rounded-xl transition-transform group-hover:scale-105"
+                      style={{ background: `color-mix(in srgb, ${meta.color} 16%, transparent)`, color: meta.color }}
+                    >
+                      <Icon size={18} />
+                    </span>
+                    <span
+                      className="inline-flex items-center rounded-md px-2 py-0.5 text-[10.5px] font-semibold"
+                      style={{ background: `color-mix(in srgb, ${meta.color} 12%, transparent)`, color: meta.color }}
+                    >
+                      {meta.label}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-[14px] font-semibold text-fg">{r.nombre}</p>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-faint">
+                    <Clock size={12} /> {r.fecha}
+                  </p>
+                  <div className="mt-3 flex items-baseline gap-1.5">
+                    <span className="font-display text-[20px] leading-none font-semibold tabular text-fg">{r.registros}</span>
+                    <span className="text-[11px] text-faint">registros</span>
+                  </div>
+                  <div className="mt-auto flex gap-1.5 border-t border-line-soft pt-3">
+                    {formatos.map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => exportarGuardado(r.nombre)}
+                        className="flex flex-1 items-center justify-center gap-1 rounded-md bg-white/[0.05] py-1.5 text-[11px] text-muted transition-colors hover:bg-white/[0.1] hover:text-fg"
+                      >
+                        <f.icon size={12} /> {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+              </motion.div>
+            )
+          })}
+        </motion.div>
+      </div>
+    </div>
+  )
+}
